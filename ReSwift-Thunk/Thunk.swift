@@ -9,14 +9,14 @@
 import Foundation
 import ReSwift
 
-public struct Thunk<State>: Action {
-    let body: (_ dispatch: @escaping DispatchFunction, _ getState: @escaping () -> State?) -> Void
-    public init(body: @escaping (
-        _ dispatch: @escaping DispatchFunction,
-        _ getState: @escaping () -> State?) -> Void) {
+public struct Thunk<State, Action> {
+    let body: (_ dispatch: @escaping DispatchFunction<Action>, _ getState: @escaping () -> State?) -> Void
+    init(
+        body: @escaping (
+            _ dispatch: @escaping DispatchFunction<Action>,
+            _ getState: @escaping () -> State?
+        ) -> Void
+    ) {
         self.body = body
     }
 }
-
-@available(*, deprecated, renamed: "Thunk")
-typealias ThunkAction = Thunk

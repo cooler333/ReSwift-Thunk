@@ -9,9 +9,7 @@
 import XCTest
 import ReSwift
 
-#if RESWIFT_THUNKTESTS
 import ReSwiftThunk
-#endif
 
 private struct ExpectThunkAssertion<T> {
     fileprivate let associated: T
@@ -31,8 +29,8 @@ private struct ExpectThunkAssertion<T> {
     }
 }
 
-public class ExpectThunk<State: StateType> {
-    private var dispatch: DispatchFunction {
+public class ExpectThunk<State, Action: Equatable> {
+    private var dispatch: DispatchFunction<Action> {
         return { action in
             self.dispatched.append(action)
             guard self.dispatchAssertions.isEmpty == false else {
@@ -41,7 +39,7 @@ public class ExpectThunk<State: StateType> {
             self.dispatchAssertions.remove(at: 0).associated(action)
         }
     }
-    private var dispatchAssertions = [ExpectThunkAssertion<DispatchFunction>]()
+    private var dispatchAssertions = [ExpectThunkAssertion<DispatchFunction<Action>>]()
     public var dispatched = [Action]()
     private var getState: () -> State? {
         return {
@@ -49,17 +47,21 @@ public class ExpectThunk<State: StateType> {
         }
     }
     private var getStateAssertions = [ExpectThunkAssertion<State>]()
-    private let thunk: Thunk<State>
-
-    public init(_ thunk: Thunk<State>) {
+    private let thunk: Thunk<State, Action>
+    private let initialAction: Action
+    
+    public init(_ thunk: Thunk<State, Action>, initialAction: Action) {
         self.thunk = thunk
+        self.initialAction = initialAction
     }
 }
 
 extension ExpectThunk {
-    public func dispatches<A: Action & Equatable>(_ expected: A,
-                                                  file: StaticString = #file,
-                                                  line: UInt = #line) -> Self {
+    public func dispatches(
+        _ expected: Action,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> Self {
         dispatchAssertions.append(
             ExpectThunkAssertion(
                 description: "Unfulfilled dispatches: \(expected)",
@@ -67,7 +69,7 @@ extension ExpectThunk {
                 line: line
             ) { received in
                 XCTAssert(
-                    received as? A == expected,
+                    received == expected,
                     "Dispatched action does not equal expected: \(received) \(expected)",
                     file: file,
                     line: line
@@ -77,9 +79,11 @@ extension ExpectThunk {
         return self
     }
 
-    public func dispatches(file: StaticString = #file,
-                           line: UInt = #line,
-                           dispatch assertion: @escaping DispatchFunction) -> Self {
+    public func dispatches(
+        file: StaticString = #file,
+        line: UInt = #line,
+        dispatch assertion: @escaping DispatchFunction<Action>
+    ) -> Self {
         dispatchAssertions.append(
             ExpectThunkAssertion(
                 description: "Unfulfilled dispatches: dispatch assertion",
@@ -93,9 +97,11 @@ extension ExpectThunk {
 }
 
 extension ExpectThunk {
-    public func getsState(_ state: State,
-                          file: StaticString = #file,
-                          line: UInt = #line) -> Self {
+    public func getsState(
+        _ state: State,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> Self {
         getStateAssertions.append(
             ExpectThunkAssertion(
                 description: "Unfulfilled getsState: \(state)",
@@ -111,7 +117,10 @@ extension ExpectThunk {
 extension ExpectThunk {
     @discardableResult
     public func run(file: StaticString = #file, line: UInt = #line) -> Self {
-        createThunkMiddleware()(dispatch, getState)({ _ in })(thunk)
+        createThunkMiddleware(
+            thunk: thunk,
+            action: initialAction
+        )(dispatch, getState)({ _ in })(initialAction)
         failLeftovers()
         return self
     }
@@ -128,13 +137,16 @@ extension ExpectThunk {
             }
             failLeftovers()
         }
-        let dispatch: DispatchFunction = {
+        let dispatch: DispatchFunction<Action> = {
             self.dispatch($0)
             if self.dispatchAssertions.isEmpty == true {
                 expectation.fulfill()
             }
         }
-        createThunkMiddleware()(dispatch, getState)({ _ in })(thunk)
+        createThunkMiddleware(
+            thunk: thunk,
+            action: initialAction
+        )(dispatch, getState)({ _ in })(initialAction)
         return self
     }
 

@@ -1,0 +1,16 @@
+PODS:
+  - ReSwift (6.1.0)
+
+DEPENDENCIES:
+  - ReSwift (from `./../Reswift`)
+
+EXTERNAL SOURCES:
+  ReSwift:
+    :path: "./../Reswift"
+
+SPEC CHECKSUMS:
+  ReSwift: af30d7f5228212f05b6149427b18fd7de1a30399
+
+PODFILE CHECKSUM: b60ff629f409f55f38bb3efc4535079fa93102fa
+
+COCOAPODS: 1.11.3

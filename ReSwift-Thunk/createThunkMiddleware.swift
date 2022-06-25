@@ -9,14 +9,16 @@
 import Foundation
 import ReSwift
 
-public func createThunkMiddleware<State>() -> Middleware<State> {
+public func createThunkMiddleware<State, Action: Equatable>(
+    thunk: Thunk<State, Action>,
+    actions: [Action]
+) -> Middleware<State, Action> {
     return { dispatch, getState in
         return { next in
             return { action in
-                switch action {
-                case let thunk as Thunk<State>:
+                if actions.contains(action) {
                     thunk.body(dispatch, getState)
-                default:
+                } else {
                     next(action)
                 }
             }
@@ -24,14 +26,9 @@ public func createThunkMiddleware<State>() -> Middleware<State> {
     }
 }
 
-// swiftlint:disable identifier_name
-@available(*, deprecated, renamed: "createThunkMiddleware")
-func ThunkMiddleware<State: StateType>() -> Middleware<State> {
-    return createThunkMiddleware()
-}
-// swiftlint:enable identifier_name
-
-@available(*, deprecated, renamed: "createThunkMiddleware")
-func createThunksMiddleware<State: StateType>() -> Middleware<State> {
-    return createThunkMiddleware()
+public func createThunkMiddleware<State, Action: Equatable>(
+    thunk: Thunk<State, Action>,
+    action: Action
+) -> Middleware<State, Action> {
+    createThunkMiddleware(thunk: thunk, actions: [action])
 }
